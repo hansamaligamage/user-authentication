@@ -38,7 +38,7 @@ namespace userAuthentication
         public ApplicationUserManager(IUserStore<ApplicationUser> store)
             : base(store)
         {
-           // PasswordValidator = new MinimumLengthValidator(6);
+            PasswordValidator = new MinimumLengthValidator(10);
         }
 
         public static ApplicationUserManager Create(IdentityFactoryOptions<ApplicationUserManager> options, IOwinContext context) 
@@ -54,7 +54,7 @@ namespace userAuthentication
             // Configure validation logic for passwords
             manager.PasswordValidator = new PasswordValidator
             {
-                RequiredLength = 6,
+                RequiredLength = 10,
                 RequireNonLetterOrDigit = true,
                 RequireDigit = true,
                 RequireLowercase = true,
