@@ -3,12 +3,24 @@ using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.AspNet.Identity;
 using Microsoft.AspNet.Identity.EntityFramework;
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace userAuthentication.Models
 {
     // You can add profile data for the user by adding more properties to your ApplicationUser class, please visit http://go.microsoft.com/fwlink/?LinkID=317594 to learn more.
     public class ApplicationUser : IdentityUser
     {
+
+        public ApplicationUser () : base ()
+        {
+            PasswordHistory = new List<PasswordHistory>();
+        }
+
+        public virtual List<PasswordHistory> PasswordHistory { get; set; }
+
         public async Task<ClaimsIdentity> GenerateUserIdentityAsync(UserManager<ApplicationUser> manager)
         {
             // Note the authenticationType must match the one defined in CookieAuthenticationOptions.AuthenticationType
@@ -30,4 +42,24 @@ namespace userAuthentication.Models
             return new ApplicationDbContext();
         }
     }
+
+    public class PasswordHistory
+    {
+        public PasswordHistory()
+        {
+            CreatedDate = DateTime.Now;
+        }
+
+        public DateTime CreatedDate { get; set; }
+
+        [Key, Column(Order = 1)]
+        public string PasswordHash { get; set; }
+
+        [Key, Column(Order = 0)]
+        public string UserId { get; set; }
+
+        public virtual ApplicationUser User { get; set; }
+
+    }
+
 }

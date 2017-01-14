@@ -7,6 +7,7 @@ using Microsoft.AspNet.Identity.Owin;
 using Microsoft.Owin;
 using Microsoft.Owin.Security;
 using userAuthentication.Models;
+using System.Linq;
 
 namespace userAuthentication
 {
@@ -31,10 +32,57 @@ namespace userAuthentication
     // Configure the application user manager used in this application. UserManager is defined in ASP.NET Identity and is used by the application.
     public class ApplicationUserManager : UserManager<ApplicationUser>
     {
+
+        private const int PASSWORD_HISTORY_LIMIT = 3;
+
         public ApplicationUserManager(IUserStore<ApplicationUser> store)
             : base(store)
         {
             PasswordValidator = new MinimumLengthValidator(10);
+        }
+
+        public override async Task<IdentityResult> ChangePasswordAsync (string userId, string currentPassword, string newPassword)
+        {
+            if (await IsPasswordHistory(userId, newPassword))
+                return await Task.FromResult(IdentityResult.Failed("Cannot reuse old password"));
+            var result = await base.ChangePasswordAsync(userId, currentPassword, newPassword);
+            if(result.Succeeded)
+            {
+                ApplicationUser user = await FindByIdAsync(userId);
+                user.PasswordHistory.Add(new PasswordHistory() { UserId = user.Id, PasswordHash = PasswordHasher.HashPassword(newPassword) });
+                return await UpdateAsync(user);
+            }
+            return result;
+        }
+
+        public override async Task<IdentityResult> ResetPasswordAsync (string userId, string token, string newPassword)
+        {
+            if (await IsPasswordHistory(userId, newPassword))
+                return await Task.FromResult(IdentityResult.Failed("Cannot reuse old password"));
+            var result = await base.ResetPasswordAsync(userId, token, newPassword);
+            if(result.Succeeded)
+            {
+                ApplicationUser user = await FindByIdAsync(userId);
+                user.PasswordHistory.Add(new PasswordHistory() { UserId = user.Id, PasswordHash = PasswordHasher.HashPassword(newPassword) });
+                return await UpdateAsync(user);
+            }
+            return result;
+        }
+
+        private async Task<bool> IsPasswordHistory (string userId, string newPassword)
+        {
+            var user = await FindByIdAsync(userId);
+            if (user.PasswordHistory.OrderByDescending(o => o.CreatedDate).Select(s => s.PasswordHash)
+                .Take(PASSWORD_HISTORY_LIMIT)
+                .Where(w => PasswordHasher.VerifyHashedPassword(w, newPassword) != PasswordVerificationResult.Failed).Any())
+                return true;
+            return false;
+        }
+
+        public Task AddToPasswordHistoryAsync(ApplicationUser user, string password)
+        {
+            user.PasswordHistory.Add(new PasswordHistory() { UserId = user.Id, PasswordHash = password });
+            return UpdateAsync(user);
         }
 
         public static ApplicationUserManager Create(IdentityFactoryOptions<ApplicationUserManager> options, IOwinContext context) 
