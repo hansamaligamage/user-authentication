@@ -14,6 +14,14 @@ namespace userAuthentication.Models
     public class ApplicationUser : IdentityUser
     {
 
+        public bool IsActive { get; set; }
+
+        public string DisplayName { get; set; }
+
+        public int AccountId { get; set; }
+
+        public virtual Account Account { get; set; }
+
         public ApplicationUser () : base ()
         {
             PasswordHistory = new List<PasswordHistory>();
@@ -41,6 +49,9 @@ namespace userAuthentication.Models
         {
             return new ApplicationDbContext();
         }
+
+        public DbSet<Account> Accounts { get; set; }
+
     }
 
     public class PasswordHistory

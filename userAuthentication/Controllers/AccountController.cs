@@ -151,27 +151,39 @@ namespace userAuthentication.Controllers
         {
             if (ModelState.IsValid)
             {
-                var user = new ApplicationUser { UserName = model.Email, Email = model.Email };
-                var result = await UserManager.CreateAsync(user, model.Password);
-                if (result.Succeeded)
+                var context = new ApplicationDbContext();
+                ApplicationUser applicationUser;
+                //you can try to get accountId field from session
+                int accountId = 1;
+                Account account = context.Accounts.Find(accountId);
+                if (account != null)
                 {
-                    await SignInManager.SignInAsync(user, isPersistent:false, rememberBrowser:false);
-                    
-                    // For more information on how to enable account confirmation and password reset please visit http://go.microsoft.com/fwlink/?LinkID=320771
-                    // Send an email with this link
-                    // string code = await UserManager.GenerateEmailConfirmationTokenAsync(user.Id);
-                    // var callbackUrl = Url.Action("ConfirmEmail", "Account", new { userId = user.Id, code = code }, protocol: Request.Url.Scheme);
-                    // await UserManager.SendEmailAsync(user.Id, "Confirm your account", "Please confirm your account by clicking <a href=\"" + callbackUrl + "\">here</a>");
-
-                    return RedirectToAction("Index", "Home");
+                        applicationUser = new ApplicationUser { UserName = model.Email, Email = model.Email,
+                            AccountId = account.Id, IsActive = model.IsActive, DisplayName = model.DisplayName };
+                        var result = await UserManager.CreateAsync(applicationUser, model.Password);
+                        if (result.Succeeded)
+                        {
+                            await SignInManager.SignInAsync(applicationUser, isPersistent: false,
+                                rememberBrowser: false);
+                            return RedirectToAction("Index", "Home");
+                        }
+                        AddErrors(result);
+                    return View(model);
                 }
-                AddErrors(result);
+                AddCustomizeError("Account Code Not Found.");
             }
-
-            // If we got this far, something failed, redisplay form
             return View(model);
         }
 
+        #region Private Methods
+
+        private void AddCustomizeError(string error)
+        {
+            ModelState.AddModelError(error, error);
+        }
+
+        #endregion
+        
         //
         // GET: /Account/ConfirmEmail
         [AllowAnonymous]
